@@ -75,6 +75,8 @@ const parseMIDIBytes = (midi: Uint8Array) => {
       case "MTrk":
         // TODO handle Track
 
+
+
         break;
 
     }
