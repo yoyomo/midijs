@@ -1,7 +1,8 @@
 // @flow
 "use strict";
 
-const readFile = (url /*: string */) => {
+const readFile /*: string => void */ 
+= url => {
   const rawFile = new XMLHttpRequest();
   rawFile.open("GET", url, false);
 
@@ -15,7 +16,8 @@ const readFile = (url /*: string */) => {
   rawFile.send(null);
 };
 
-const stringToBytes = (midiString /*: string */) /*: Uint8Array */ => {
+const stringToBytes /*: string => Uint8Array */ 
+= midiString => {
   const u8 = new Uint8Array(midiString.length);
   for(let b = 0; b < midiString.length; b++){
     u8[b] = midiString.charCodeAt(b);
@@ -24,7 +26,8 @@ const stringToBytes = (midiString /*: string */) /*: Uint8Array */ => {
   return u8;
 };
 
-const getNBytes = (midi /*: Uint8Array */, start /*: number */, n /*: number */) /*: number */ => {
+const getNBytes /*: (Uint8Array, number, number) => number */ 
+= (midi, start, n) => {
   let nBytes = 0;
   for (let b = 0; b < n; b++) {
     const byte = midi[start + b];
@@ -33,7 +36,8 @@ const getNBytes = (midi /*: Uint8Array */, start /*: number */, n /*: number */)
   return nBytes;
 };
 
-const getDeltaTime = (midi /*: Uint8Array */, start /*: number */) => {
+const getDeltaTime /*: (Uint8Array, number) => number */
+= (midi, start)=> {
   let deltaTime = 0;
   let deltaTimeNBytes = 0;
   let deltaTimeByte;
@@ -71,11 +75,22 @@ type Header = {
 };
 */
 
-const getMidiType = (bytes /*: number */) /*: MidiTypes */ => {
-  return String.fromCharCode(bytes);
+const getMidiType /*: number => MidiTypes */
+= bytes => {
+  const type = String.fromCharCode(bytes);
+  switch (type) {
+    case "MThd":
+    case "MTrk":
+    return type;
+
+    default:
+    console.error("Invalid Midi Type: ", type);
+    return "MThd";
+  }
 }
 
-const parseMIDIBytes = (midi /*: Uint8Array */) => {
+const parseMIDIBytes /*: Uint8Array => void */ 
+= midi => {
 
   const header /*: Header */ = {
     format: 0,
