@@ -2,23 +2,23 @@
   "name": "midijs-example",
   "version": "1.0.0",
   "description": "",
-  "main": "src/index.mjs",
+  "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "webpack-dev-server --open",
-    "build": "webpack"
+    "build": "webpack",
+    "flow-watch": "fswatch -o ./ | xargs -n1 -I{} sh -c 'clear; printf \"\\033[3J\" && flow'"
   },
   "author": "Armando J. Ortiz",
   "license": "ISC",
   "dependencies": {
     "express": "^4.17.1",
     "http": "0.0.0",
-    "muvjs": "^2.2.0",
     "lodash": "^4.17.15",
-    "ts-loader": "^6.2.1",
-    "typescript": "^3.7.2"
+    "muvjs": "^2.2.0"
   },
   "devDependencies": {
+    "flow-bin": "^0.113.0",
     "webpack": "^4.41.1",
     "webpack-cli": "^3.3.9",
     "webpack-dev-server": "^3.8.2"
