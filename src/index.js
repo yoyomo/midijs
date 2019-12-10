@@ -366,6 +366,8 @@ const readMidiEvent /*: (Uint8Array, number, number) => {midiEvent: MidiEvent, d
 const readSysExEvent /*: (Uint8Array, number, number) => {sysExEvent: SysExEvent, displacement: number} */
   = (midi, statusByte, start) => {
     
+    // TODO read SysExEvent
+
 };
 
 const parseMIDIBytes /*: Uint8Array => void */
@@ -448,7 +450,7 @@ const parseMIDIBytes /*: Uint8Array => void */
                 break;
 
               case 0xFF:
-                // Meta Event
+                // TODO read Meta Event
                 break;
             }
             break;
