@@ -27,10 +27,10 @@ const stringToBytes /*: string => Uint8Array */
 };
 
 const getNBytes /*: (Uint8Array, number, number) => number */
-  = (midi, start, n) => {
+  = (midiBytes, start, n) => {
   let nBytes = 0;
   for (let b = 0; b < n; b++) {
-    const byte = midi[start + b];
+    const byte = midiBytes[start + b];
     nBytes = nBytes << (8 * b) + byte;
   }
   return nBytes;
@@ -56,7 +56,7 @@ type Division = {
 /*::
 type Header = {
   format: number,
-  tracks: number,
+  numOfTracks: number,
   division: Division
 };
 */
@@ -76,12 +76,12 @@ const getMidiType /*: number => MidiTypes */
 };
 
 const getDeltaTime /*: (Uint8Array, number) => {deltaTime: number, deltaTimeNBytes: number} */
-  = (midi, start) => {
+  = (midiBytes, start) => {
   let deltaTime = 0;
   let deltaTimeNBytes = 0;
   let deltaTimeByte;
   do {
-    deltaTimeByte = midi[start + deltaTimeNBytes];
+    deltaTimeByte = midiBytes[start + deltaTimeNBytes];
     deltaTime = (deltaTime << 7) + deltaTimeByte & 0x7F;
     deltaTimeNBytes++;
   } while (!!(deltaTimeByte & 0x80));
@@ -280,10 +280,14 @@ const getControllerDescription /*: number => string */
 };
 
 /*::
-type MidiEvent =  {
-  deltaTime: number,
+interface EventDetails {
   description: string,
   status: number,
+};
+ */
+
+/*::
+interface MidiEvent extends EventDetails {
   channel: number,
   key: number,
   velocity: number,
@@ -295,27 +299,33 @@ type MidiEvent =  {
  */
 
 /*::
-type SysExEvent =  {
-  deltaTime: number,
-  description: string,
-  status: number,
+interface SysExEvent extends EventDetails {
+  sysExData: number
 };
  */
 
 const readMidiEvent /*: (Uint8Array, number, number) => {midiEvent: MidiEvent, displacement: number} */
-  = (midi, statusByte, start) => {
+  = (midiBytes, statusByte, start) => {
 
   const channel = statusByte & 0x0F;
 
   let displacement = 0;
-  const dataByte1 = getNBytes(midi, start + displacement, 1) & 0x7F;
+  const dataByte1 = getNBytes(midiBytes, start + displacement, 1) & 0x7F;
   displacement += 1;
-  const dataByte2 = getNBytes(midi, start + displacement, 1) & 0x7F;
+  const dataByte2 = getNBytes(midiBytes, start + displacement, 1) & 0x7F;
   displacement += 1;
 
-  const midiEvent /*: MidiEvent */ = {};
-  midiEvent.status = statusByte;
-  midiEvent.channel = channel;
+  const midiEvent /*: MidiEvent */ = {
+    description: "",
+    status: statusByte,
+    channel: channel,
+    key: 0,
+    velocity: 0,
+    controllerType: 0,
+    programNumber: 0,
+    channelPressure: 0,
+    pitchValue: 0
+  };
 
   switch (statusByte & 0xF0) {
     case 0x80:
@@ -364,18 +374,62 @@ const readMidiEvent /*: (Uint8Array, number, number) => {midiEvent: MidiEvent, d
 };
 
 const readSysExEvent /*: (Uint8Array, number, number) => {sysExEvent: SysExEvent, displacement: number} */
-  = (midi, statusByte, start) => {
-    
-    // TODO read SysExEvent
+  = (midiBytes, statusByte, start) => {
+
+  let displacement = 0;
+  const lengthByte = getNBytes(midiBytes, start + displacement, 1);
+  displacement += 1;
+  const sysExData = getNBytes(midiBytes, start + displacement, lengthByte);
+  displacement += lengthByte;
+
+  let description = "";
+  switch (statusByte & 0xFF) {
+    case 0xF0:
+      description = "Normal SysEx Event";
+      break;
+    case 0xF7:
+      description = "Divided SysEx Events";
+      break;
+  }
+
+  const sysExEvent = {description, status: statusByte, sysExData};
+
+  return {sysExEvent, displacement};
 
 };
 
-const parseMIDIBytes /*: Uint8Array => void */
-  = midi => {
+/*::
+interface EmptyEvent extends EventDetails {}
+ */
+
+/*::
+type Event = MidiEvent | SysExEvent | EmptyEvent
+ */
+
+/*::
+type TrackEvent = {
+  deltaTime: number,
+  event: Event
+};
+ */
+
+/*::
+type Track = TrackEvent[]
+*/
+
+/*::
+type Midi = {
+  header: Header,
+  tracks: Track[]
+};
+ */
+
+const parseMIDIBytes /*: Uint8Array => Midi */
+  = midiBytes => {
 
   const header /*: Header */ = {
     format: 0,
-    tracks: 0,
+    numOfTracks: 0,
     division: {
       type: "metrical",
       ticksPerQuarterNote: 0,
@@ -384,23 +438,25 @@ const parseMIDIBytes /*: Uint8Array => void */
     }
   };
 
+  let tracks /*: Track[] */ = [];
+
   let c = 0;
-  while (!isNaN(midi[c])) {
-    const type /*: MidiTypes */ = getMidiType(getNBytes(midi, c, 4));
+  while (!isNaN(midiBytes[c])) {
+    const type = getMidiType(getNBytes(midiBytes, c, 4));
     c += 4;
-    const length = getNBytes(midi, c, 4);
+    const length = getNBytes(midiBytes, c, 4);
     c += 4;
 
     switch (type) {
       case "MThd":
         const twoBytes = 2;
         let headerBytePosition = c;
-        const format = getNBytes(midi, headerBytePosition, twoBytes);
-        const tracks = getNBytes(midi, headerBytePosition += twoBytes, twoBytes);
-        const division = getNBytes(midi, headerBytePosition += twoBytes, twoBytes);
+        const format = getNBytes(midiBytes, headerBytePosition, twoBytes);
+        const numOfTracks = getNBytes(midiBytes, headerBytePosition += twoBytes, twoBytes);
+        const division = getNBytes(midiBytes, headerBytePosition += twoBytes, twoBytes);
 
         header.format = format;
-        header.tracks = tracks;
+        header.numOfTracks = numOfTracks;
         header.division.type = division & 0x8000 ? "time-code-based" : "metrical";
 
         if (header.division.type === "time-code-based") {
@@ -415,47 +471,53 @@ const parseMIDIBytes /*: Uint8Array => void */
         break;
       case "MTrk":
         let trackPos = c;
+        let track /*: Track */ = [];
 
-        // TODO loop through all length events
+        while (trackPos < length) {
 
-        const {deltaTime, deltaTimeNBytes} = getDeltaTime(midi, trackPos);
-        trackPos += deltaTimeNBytes;
+          const {deltaTime, deltaTimeNBytes} = getDeltaTime(midiBytes, trackPos);
+          trackPos += deltaTimeNBytes;
 
-        const statusByte = getNBytes(midi, trackPos, 1);
-        trackPos += 1;
+          const statusByte = getNBytes(midiBytes, trackPos, 1);
+          trackPos += 1;
 
-        let event = {};
-        event.deltaTime = deltaTime;
+          let event /*: Event */ = {description: "", status: statusByte};
 
-        switch (statusByte & 0xF0) {
-          case 0x80:
-          case 0x90:
-          case 0xA0:
-          case 0xB0:
-          case 0xC0:
-          case 0xD0:
-          case 0xE0:
-            const {midiEvent, displacement} = readMidiEvent(midi, statusByte, trackPos);
-            event = {...event, ...midiEvent};
-            trackPos += displacement;
-            break;
+          switch (statusByte & 0xF0) {
+            case 0x80:
+            case 0x90:
+            case 0xA0:
+            case 0xB0:
+            case 0xC0:
+            case 0xD0:
+            case 0xE0:
+              const {midiEvent, displacement} = readMidiEvent(midiBytes, statusByte, trackPos);
+              event = midiEvent;
+              trackPos += displacement;
+              break;
 
-          case 0xF0:
-            switch (statusByte & 0xFF) {
-              case 0xF0:
-              case 0xF7:
-                const {sysExEvent, displacement} = readSysExEvent(midi, statusByte, trackPos);
-                event = {...event, ...sysExEvent};
-                trackPos += displacement;
-                break;
+            case 0xF0:
+              switch (statusByte & 0xFF) {
+                case 0xF0:
+                case 0xF7:
+                  const {sysExEvent, displacement} = readSysExEvent(midiBytes, statusByte, trackPos);
+                  event = sysExEvent;
+                  trackPos += displacement;
+                  break;
 
-              case 0xFF:
-                // TODO read Meta Event
-                break;
-            }
-            break;
+                case 0xFF:
+                  // TODO read Meta Event
+                  break;
+              }
+              break;
+
+          }
+
+          track.push({deltaTime, event});
 
         }
+
+        tracks.push(track);
 
         // TODO save track object
 
@@ -469,6 +531,8 @@ const parseMIDIBytes /*: Uint8Array => void */
     c += length;
 
   }
+
+  return {header, tracks};
 };
 
 readFile('midi-files/fountain_fairy.mid');
