@@ -3,7 +3,7 @@ const outputPath = path.resolve(__dirname, './docs');
 
 module.exports = {
   mode: 'development',
-  entry: './src/midi.js',
+  entry: './src/index.js',
   output: {
     path: outputPath,
     filename: 'bundle.js'

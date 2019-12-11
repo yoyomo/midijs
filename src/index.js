@@ -61,17 +61,18 @@ type Header = {
 };
 */
 
-const getMidiType /*: number => MidiTypes */
+const getMidiType /*: number => {type: MidiTypes, error: string} */
   = bytes => {
   const type = String.fromCharCode(bytes);
+  let error = "";
   switch (type) {
     case "MThd":
     case "MTrk":
-      return type;
+      return {type, error};
 
     default:
-      console.error("Invalid Midi Type: ", type);
-      return "MThd";
+      error = "Invalid Midi Type: " + type;
+      return {type: "MThd", error};
   }
 };
 
@@ -442,7 +443,13 @@ const parseMIDIBytes /*: Uint8Array => Midi */
 
   let c = 0;
   while (!isNaN(midiBytes[c])) {
-    const type = getMidiType(getNBytes(midiBytes, c, 4));
+    const {type, error} = getMidiType(getNBytes(midiBytes, c, 4));
+
+    if(error){
+      console.error(error);
+      return {header, tracks};
+    }
+
     c += 4;
     const length = getNBytes(midiBytes, c, 4);
     c += 4;
@@ -531,6 +538,9 @@ const parseMIDIBytes /*: Uint8Array => Midi */
     c += length;
 
   }
+
+  const midi = {header, tracks};
+  console.log(midi);
 
   return {header, tracks};
 };
