@@ -305,6 +305,14 @@ interface SysExEvent extends EventDetails {
 };
  */
 
+/*::
+interface MetaEvent extends EventDetails {
+  data: number,
+  text?: string,
+  channel?: number
+};
+ */
+
 const readMidiEvent /*: (Uint8Array, number, number) => {midiEvent: MidiEvent, displacement: number} */
   = (midiBytes, statusByte, start) => {
 
@@ -383,7 +391,7 @@ const readSysExEvent /*: (Uint8Array, number, number) => {sysExEvent: SysExEvent
   const sysExData = getNBytes(midiBytes, start + displacement, lengthByte);
   displacement += lengthByte;
 
-  let description = "";
+  let description = "Unknown SysEx Event";
   switch (statusByte & 0xFF) {
     case 0xF0:
       description = "Normal SysEx Event";
@@ -397,6 +405,75 @@ const readSysExEvent /*: (Uint8Array, number, number) => {sysExEvent: SysExEvent
 
   return {sysExEvent, displacement};
 
+};
+
+
+const readMetaEvent /*: (Uint8Array, number, number) => {metaEvent: MetaEvent, displacement: number} */
+  = (midiBytes, statusByte, start) => {
+  let displacement = 0;
+  const typeByte = getNBytes(midiBytes, start + displacement, 1);
+  displacement += 1;
+  const lengthByte = getNBytes(midiBytes, start + displacement, 1);
+  displacement += 1;
+
+  const data = getNBytes(midiBytes, start + displacement, lengthByte);
+  let channel = 0;
+
+  let description = "Unknown Meta Event";
+  let text = "";
+  switch (typeByte) {
+    case 0x00:
+      if (lengthByte === 0x02) {
+        description = "Sequence Number";
+      }
+      break;
+    case 0x01:
+      description = "Text Event";
+      text = String.fromCharCode(data);
+      break;
+    case 0x02:
+      description = "Copyright Notice";
+      text = String.fromCharCode(data);
+      break;
+    case 0x03:
+      description = "Sequence/Track Name";
+      text = String.fromCharCode(data);
+      break;
+    case 0x04:
+      description = "Instrument Name";
+      text = String.fromCharCode(data);
+      break;
+    case 0x05:
+      description = "Lyric";
+      text = String.fromCharCode(data);
+      break;
+    case 0x06:
+      description = "Marker";
+      text = String.fromCharCode(data);
+      break;
+    case 0x07:
+      description = "Cue Point";
+      text = String.fromCharCode(data);
+      break;
+    case 0x20:
+      if (lengthByte === 0x01) {
+        description = "MIDI Channel Prefix";
+        channel = data & 0x0F;
+      }
+      break;
+    case 0x2F:
+      if (lengthByte === 0x00) {
+        description = "End Of Track";
+        displacement -= 1;
+      }
+      break;
+  }
+
+  const metaEvent = {
+    description, text, status: statusByte, data, channel
+  };
+
+  return {metaEvent, displacement};
 };
 
 /*::
@@ -445,7 +522,7 @@ const parseMIDIBytes /*: Uint8Array => Midi */
   while (!isNaN(midiBytes[c])) {
     const {type, error} = getMidiType(getNBytes(midiBytes, c, 4));
 
-    if(error){
+    if (error) {
       console.error(error);
       return {header, tracks};
     }
@@ -506,15 +583,19 @@ const parseMIDIBytes /*: Uint8Array => Midi */
             case 0xF0:
               switch (statusByte & 0xFF) {
                 case 0xF0:
-                case 0xF7:
+                case 0xF7: {
                   const {sysExEvent, displacement} = readSysExEvent(midiBytes, statusByte, trackPos);
                   event = sysExEvent;
                   trackPos += displacement;
                   break;
+                }
 
-                case 0xFF:
-                  // TODO read Meta Event
+                case 0xFF: {
+                  const {metaEvent, displacement} = readMetaEvent(midiBytes, statusByte, trackPos);
+                  event = metaEvent;
+                  trackPos += displacement;
                   break;
+                }
               }
               break;
 
