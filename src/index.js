@@ -467,6 +467,34 @@ const readMetaEvent /*: (Uint8Array, number, number) => {metaEvent: MetaEvent, d
         displacement -= 1;
       }
       break;
+
+    case 0x51:
+      if (lengthByte === 0x03) {
+        description = "Set Tempo in microseconds per quarter note";
+      }
+      break;
+
+    case 0x54:
+      if (lengthByte === 0x05) {
+        description = "SMPTE Offset";
+      }
+      break;
+
+    case 0x58:
+      if (lengthByte === 0x04) {
+        description = "Time Signature";
+      }
+      break;
+
+    case 0x59:
+      if (lengthByte === 0x02) {
+        description = "Time Signature";
+      }
+      break;
+
+    case 0x7F:
+      description = "Sequencer Specific Meta Event";
+      break;
   }
 
   const metaEvent = {
@@ -606,8 +634,6 @@ const parseMIDIBytes /*: Uint8Array => Midi */
         }
 
         tracks.push(track);
-
-        // TODO save track object
 
         // TODO fire TrackEvent
 
