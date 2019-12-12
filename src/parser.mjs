@@ -6,7 +6,7 @@ const getNBytes /*: (Uint8Array, number, number) => number */
   let nBytes = 0;
   for (let b = 0; b < n; b++) {
     const byte = midiBytes[start + b];
-    nBytes = nBytes << (8 * b) + byte;
+    nBytes = (nBytes << (8 * b)) + byte;
   }
   return nBytes;
 };
@@ -36,9 +36,9 @@ type Header = {
 };
 */
 
-const getMidiType /*: number => {type: MidiTypes, error: string} */
+const getMidiType /*: Uint8Array => {type: MidiTypes, error: string} */
   = bytes => {
-  const type = String.fromCharCode(bytes);
+  const type = String.fromCharCode(...bytes);
   let error = "";
   switch (type) {
     case "MThd":
@@ -523,7 +523,7 @@ export const parseMIDIBytes /*: Uint8Array => Midi */
 
   let c = 0;
   while (!isNaN(midiBytes[c])) {
-    const {type, error} = getMidiType(getNBytes(midiBytes, c, 4));
+    const {type, error} = getMidiType(midiBytes.slice(c, c + 4));
 
     if (error) {
       console.error(error);
@@ -560,6 +560,7 @@ export const parseMIDIBytes /*: Uint8Array => Midi */
         let trackPos = c;
         let track /*: Track */ = [];
 
+        console.log("length", length);
         while (trackPos < length) {
 
           const {deltaTime, deltaTimeNBytes} = getDeltaTime(midiBytes, trackPos);
@@ -604,7 +605,11 @@ export const parseMIDIBytes /*: Uint8Array => Midi */
 
           }
 
-          track.push({deltaTime, event});
+          const trackEvent = {deltaTime, event};
+
+          console.log("trackEvent",trackEvent);
+
+          track.push(trackEvent);
 
         }
 
