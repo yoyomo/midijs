@@ -6,10 +6,16 @@ const getNBytes /*: (Uint8Array, number, number) => number */
   let nBytes = 0;
   for (let b = 0; b < n; b++) {
     const byte = midiBytes[start + b];
-    nBytes = (nBytes << (8 * b)) + byte;
+    // same as << 8 but handles numbers bigger than 32bit numbers
+    nBytes = (nBytes * 256) + byte;
   }
   return nBytes;
 };
+
+/* based on MIDI specs
+For more info, please look at:
+https://www.mobilefish.com/tutorials/midi/midi_quickguide_specification.html#figure_1
+*/
 
 /*::
 type MidiTypes = "MThd" | "MTrk";
@@ -300,7 +306,7 @@ const readMidiEvent /*: (Uint8Array, number, number) => {midiEvent: MidiEvent, d
   displacement += 1;
 
   const midiEvent /*: MidiEvent */ = {
-    description: "",
+    description: "Unknown Midi Event",
     status: statusByte,
     channel: channel,
     key: 0,
@@ -392,6 +398,7 @@ const readMetaEvent /*: (Uint8Array, number, number) => {metaEvent: MetaEvent, d
   displacement += 1;
 
   const data = getNBytes(midiBytes, start + displacement, lengthByte);
+  displacement += lengthByte;
   let channel = 0;
 
   let description = "Unknown Meta Event";
@@ -439,7 +446,6 @@ const readMetaEvent /*: (Uint8Array, number, number) => {metaEvent: MetaEvent, d
     case 0x2F:
       if (lengthByte === 0x00) {
         description = "End Of Track";
-        displacement -= 1;
       }
       break;
 
@@ -560,8 +566,7 @@ export const parseMIDIBytes /*: Uint8Array => Midi */
         let trackPos = c;
         let track /*: Track */ = [];
 
-        console.log("length", length);
-        while (trackPos < length) {
+        while (trackPos < c + length) {
 
           const {deltaTime, deltaTimeNBytes} = getDeltaTime(midiBytes, trackPos);
           trackPos += deltaTimeNBytes;
@@ -569,7 +574,7 @@ export const parseMIDIBytes /*: Uint8Array => Midi */
           const statusByte = getNBytes(midiBytes, trackPos, 1);
           trackPos += 1;
 
-          let event /*: Event */ = {description: "", status: statusByte};
+          let event /*: Event */ = {description: "Unknown Event", status: statusByte};
 
           switch (statusByte & 0xF0) {
             case 0x80:
@@ -605,9 +610,17 @@ export const parseMIDIBytes /*: Uint8Array => Midi */
 
           }
 
-          const trackEvent = {deltaTime, event};
+          if(event.description.indexOf("Unknown") !== -1) {
+            console.error(event.description, "at byte",`from byte #${c} to byte #${trackPos}`);
+            let errorBytes = "";
+            midiBytes.slice(c,trackPos).map(b=>{
+              errorBytes+=b.toString(16).padStart(2,'0')+' ';
+            });
+            console.error(errorBytes);
+            // return;
+          }
 
-          console.log("trackEvent",trackEvent);
+          const trackEvent = {deltaTime, event};
 
           track.push(trackEvent);
 

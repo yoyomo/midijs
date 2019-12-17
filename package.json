@@ -12,8 +12,6 @@
   "author": "Armando J. Ortiz",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.17.1",
-    "http": "0.0.0",
     "lodash": "^4.17.15",
     "muvjs": "^2.2.0"
   },
