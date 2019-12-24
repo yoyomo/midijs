@@ -1,10 +1,12 @@
 // @flow
 "use strict";
-
+/*::
+import type {Midi, TrackEvent, Header} from './parser'
+*/
 import { parseMIDIBytes } from "./parser";
 
-export const readFile /*: string => void */
-  = url => {
+export const readFile /*: (string, Midi => void, (Header, TrackEvent) => void) => void */
+  = (url, onSuccess, onMidiEvent) => {
     const rawFile = new XMLHttpRequest();
     rawFile.open("GET", url, true);
     rawFile.responseType = "arraybuffer";
@@ -13,7 +15,8 @@ export const readFile /*: string => void */
       const arrayBuffer = rawFile.response;
       if (arrayBuffer) {
         const byteArray = new Uint8Array(arrayBuffer)
-        parseMIDIBytes(byteArray);
+        const midi = parseMIDIBytes(byteArray, onMidiEvent);
+        if(onSuccess) onSuccess(midi);
       }
 
     };

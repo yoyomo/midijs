@@ -35,7 +35,7 @@ type Division = {
 */
 
 /*::
-type Header = {
+export type Header = {
   format: number,
   numOfTracks: number,
   division: Division
@@ -494,7 +494,7 @@ type Event = MidiEvent | SysExEvent | EmptyEvent
  */
 
 /*::
-type TrackEvent = {
+export type TrackEvent = {
   deltaTime: number,
   event: Event
 };
@@ -505,14 +505,14 @@ type Track = TrackEvent[]
 */
 
 /*::
-type Midi = {
+export type Midi = {
   header: Header,
   tracks: Track[]
 };
  */
 
-export const parseMIDIBytes /*: Uint8Array => Midi */
-  = midiBytes => {
+export const parseMIDIBytes /*: (Uint8Array, (Header, TrackEvent) => void) => Midi */
+  = (midiBytes, onMidiEvent) => {
 
     const header /*: Header */ = {
       format: 0,
@@ -615,14 +615,14 @@ export const parseMIDIBytes /*: Uint8Array => Midi */
               let errorBytes = "";
               midiBytes.slice(c, trackPos).map(b => {
                 errorBytes += b.toString(16).padStart(2, '0') + ' ';
+                return b;
               });
               console.error(errorBytes);
-              // return;
             }
 
             const trackEvent = { deltaTime, event };
 
-            // TODO fire TrackEvent
+            onMidiEvent(header, trackEvent);
 
             track.push(trackEvent);
 
@@ -641,6 +641,6 @@ export const parseMIDIBytes /*: Uint8Array => Midi */
     const midi = { header, tracks };
     console.log(midi);
 
-    return { header, tracks };
+    return midi;
   };
 
