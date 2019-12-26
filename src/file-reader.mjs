@@ -5,7 +5,7 @@ import type {Midi, TrackEvent, Header} from './parser'
 */
 import { parseMIDIBytes } from "./parser";
 
-export const readFile /*: (string, Midi => void, (Header, TrackEvent) => void) => void */
+export const readFile /*: (string, Midi => void, () => (Header, TrackEvent) => void) => void */
   = (url, onSuccess, onMidiEvent) => {
     const rawFile = new XMLHttpRequest();
     rawFile.open("GET", url, true);

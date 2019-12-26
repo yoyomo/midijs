@@ -269,7 +269,7 @@ interface EventDetails {
  */
 
 /*::
-interface MidiEvent extends EventDetails {
+export interface MidiEvent extends EventDetails {
   channel: number,
   key: number,
   velocity: number,
@@ -287,7 +287,7 @@ interface SysExEvent extends EventDetails {
  */
 
 /*::
-interface MetaEvent extends EventDetails {
+export interface MetaEvent extends EventDetails {
   data: number,
   text?: string,
   channel?: number
@@ -511,7 +511,7 @@ export type Midi = {
 };
  */
 
-export const parseMIDIBytes /*: (Uint8Array, (Header, TrackEvent) => void) => Midi */
+export const parseMIDIBytes /*: (Uint8Array, () => (Header, TrackEvent) => void) => Midi */
   = (midiBytes, onMidiEvent) => {
 
     const header /*: Header */ = {
@@ -529,6 +529,8 @@ export const parseMIDIBytes /*: (Uint8Array, (Header, TrackEvent) => void) => Mi
 
     let c = 0;
     while (!isNaN(midiBytes[c])) {
+
+      const sendMidiEvent = onMidiEvent()
       const { type, error } = getMidiType(midiBytes.slice(c, c + 4));
 
       if (error) {
@@ -622,7 +624,7 @@ export const parseMIDIBytes /*: (Uint8Array, (Header, TrackEvent) => void) => Mi
 
             const trackEvent = { deltaTime, event };
 
-            onMidiEvent(header, trackEvent);
+            sendMidiEvent(header, trackEvent);
 
             track.push(trackEvent);
 
