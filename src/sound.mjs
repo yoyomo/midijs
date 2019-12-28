@@ -22,11 +22,11 @@ export interface SynthResource {
 }
 
 */
-export const playSound /*: (number, number[], AudioContext, SynthResource) => {osc: OscillatorNode | void, endTime: number} */
+export const playSound /*: (number, number[], AudioContext, SynthResource) => {osc: OscillatorNode | void, endTime: number, gain: GainNode | void} */
   = (noteIndex, notes, audioContext, synth) => {
-    if (!synth.sound_on) return { osc: undefined, endTime: 0 };
+    if (!synth.sound_on) return { osc: undefined, endTime: 0 , gain: undefined};
     if (noteIndex < 0 || noteIndex >= notes.length) {
-      return { osc: undefined, endTime: 0 };
+      return { osc: undefined, endTime: 0, gain: undefined };
     }
 
     let noteFrequency = notes[noteIndex];
@@ -51,14 +51,14 @@ export const playSound /*: (number, number[], AudioContext, SynthResource) => {o
     gain.gain.linearRampToValueAtTime(0.2, attackTime);
     gain.gain.exponentialRampToValueAtTime(0.000001, endTime);
     osc1.start(now);
-    // osc1.stop(endTime);
-    return { osc: osc1, endTime };
+    return { osc: osc1, endTime , gain};
   };
 
-export const stopSound /*: ({osc: OscillatorNode | void, endTime: number}) => void */
-  = ({ osc, endTime }) => {
-    if (osc) {
-      osc.stop(endTime);
+export const stopSound /*: ({osc: OscillatorNode | void, endTime: number, gain: GainNode | void}) => void */
+  = ({ osc, endTime, gain }) => {
+    if (osc && gain) {
+      gain.gain.exponentialRampToValueAtTime(0.000001, endTime);
+      osc.stop();
     }
   }
 

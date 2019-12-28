@@ -1,6 +1,6 @@
 //@flow
 import { playSound, recomputeAllNotes, stopSound } from "./sound.mjs";
-const TEMPO = 500000; // 60000000 / 500000 => 120bpm
+const TEMPO = 500000; // 60000 / 500 => 120bpm
 
 /*::
 import type {Header, TrackEvent} from './parser.mjs';
@@ -12,15 +12,12 @@ export const onMidiEvent /*: ()=> () => (Header, TrackEvent) => void*/
 
     let tempo = TEMPO;
 
+    const notes = recomputeAllNotes();
     let audioContext = new AudioContext();
-    let sampleRate = audioContext.sampleRate;
+    let milliseconds = 0;
 
     return () => {
-      let lastDeltaTime = 0;
-      let microseconds = 0;
-
-      let playingMIDINotes /*: {[k:number]: {osc: OscillatorNode | void, endTime: number}} */ = {};
-      const notes = recomputeAllNotes();
+      let playingMIDINotes = {};
 
       return (header, midiTrackEvent) => {
         console.log("deltaTime", midiTrackEvent.deltaTime)
@@ -28,24 +25,25 @@ export const onMidiEvent /*: ()=> () => (Header, TrackEvent) => void*/
         console.log("header", header);
         console.log("division", header.division);
 
-        // const deltaTime = midiTrackEvent.deltaTime - lastDeltaTime
-        // lastDeltaTime = midiTrackEvent.deltaTime;
+        const deltaTimeMilliseconds = tempo * midiTrackEvent.deltaTime / header.division.ticksPerQuarterNote;
+        milliseconds += deltaTimeMilliseconds;
 
-        const deltaTimeMicroseconds = tempo * midiTrackEvent.deltaTime / header.division.ticksPerQuarterNote;
-        microseconds += deltaTimeMicroseconds;
+        console.log("deltaTimeMilliseconds", deltaTimeMilliseconds);
+        console.log("milliseconds", milliseconds);
 
-        const handleEvent = () => {
+        const handleTimedEvent = () => {
 
           switch (midiTrackEvent.event.description) {
 
             case "Note On": {
               const midiEvent /*: MidiEvent */ = (midiTrackEvent.event /*: any */);
-              playingMIDINotes[midiEvent.key] = playSound(midiEvent.key + 21, notes, audioContext,
+              debugger
+              playingMIDINotes[midiEvent.key] = playSound(midiEvent.key - 21, notes, audioContext,
                 {
                   sound_on: true,
                   vco_signal: "sawtooth",
                   cut_off_frequency: 350,
-                  release: 1.5,
+                  release: 5,
                   attack: 0.0001,
                 }
               )
@@ -54,9 +52,10 @@ export const onMidiEvent /*: ()=> () => (Header, TrackEvent) => void*/
             }
             case "Note Off": {
               const midiEvent /*: MidiEvent */ = (midiTrackEvent.event /*: any */);
+              debugger
               if (playingMIDINotes[midiEvent.key]) {
-                stopSound(playingMIDINotes[midiEvent.key])
-                delete playingMIDINotes[midiEvent.key];
+              stopSound(playingMIDINotes[midiEvent.key])
+              delete playingMIDINotes[midiEvent.key];
               }
               break;
             }
@@ -71,8 +70,7 @@ export const onMidiEvent /*: ()=> () => (Header, TrackEvent) => void*/
             break;
         }
 
-        console.log(microseconds / 1000);
-        setTimeout(handleEvent, microseconds / 1000);
+        setTimeout(handleTimedEvent,audioContext.currentTime + 2 * milliseconds / 1000);
       }
     }
   }
