@@ -12,7 +12,7 @@
   "author": "Armando J. Ortiz",
   "license": "ISC",
   "dependencies": {
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.19",
     "muvjs": "^2.2.0"
   },
   "devDependencies": {
